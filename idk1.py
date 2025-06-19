@@ -21,11 +21,17 @@ def damn():
     
     
     try:
-     email = driver.find_elements(By.XPATH, "//div[contains(@class,'VwiC3b')]/span/em[contains(text(),'@')]") 
+     #email = driver.find_elements(By.XPATH, "//div[contains(@class,'VwiC3b')]/span/em[contains(text(),'@')]") 
+     emailfinder=driver.find_elements(By.CSS_SELECTOR,"div.VwiC3b span em")
+     email=[]
+     for i in emailfinder:
+        if '@' in i.text:
+           email.append(i.text)
+
     except:
         email="Not found"
     for i in email:
-       print(i.text.)
+       print(i.text)
 
 if __name__=='__main__':
     damn()
