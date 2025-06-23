@@ -31,7 +31,8 @@ class Logic:
         finder=driver.find_elements(By.CLASS_NAME,"hfpxzc") #to find all the links once end reached
         link_list=[]
         for i in finder:
-            link_list.append(i.get_attribute("href"))
+            if i not in link_list:
+                link_list.append(i.get_attribute("href"))
         driver.quit()
         print(f"{len(link_list)} companies found.")
         print("Enter the number of companies you would like to get the information for: ")
@@ -91,7 +92,7 @@ class Logic:
     
     def email(self,Company,Website,driven):
         initial_query="https://www.google.com/search?q="
-        if Website.startswith("https"):
+        if Website.startswith("https") & Website.endswith("/"):
                web=Website[:len(Website)-1]
                final_query=initial_query+web+"+email+address"
 
@@ -112,7 +113,6 @@ class Logic:
               for b in emailwebelements:
                   emaillist.append(b.text)
         except:
-               driven.save_screenshot("debug.png")
                emailwebelements="Not found"
         return emaillist
     
@@ -133,14 +133,16 @@ def main():
    loop_count=0
    element_list=[]
    for i in link_list:
-      while loop_count<int(loop_number):
+      if loop_count<int(loop_number):
          Company=logic.company(i,driven)
          Address,PhoneNumber,Website=logic.address_PhoneNumber_website(driven)
          map_link=i
          emaillist=logic.email(Company,Website,driven)
          element_list.append([Company,Address,PhoneNumber,map_link,Website,emaillist])
          loop_count=loop_count+1
-      driven.quit()
+      else:
+        driven.quit()
+        break
 
    print(element_list)
    end=time.time()
