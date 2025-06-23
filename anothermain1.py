@@ -1,4 +1,4 @@
-import threading
+from threading import Thread
 from selenium import webdriver # type: ignore
 from selenium.webdriver.common.by import By # type: ignore
 import pyautogui # type: ignore
@@ -13,6 +13,17 @@ import sys
 import search as s
 import sys
 #didnt use beautiful soup,i used selenium cuz google maps is javascript rendered,beautiful soup and requests would haave given back a bs page
+class returningThread(Thread):
+    def __init__(self,group=None,target=None,name=None,args=(),kwargs={}):
+        Thread.__init__(self,group,target,name,args,kwargs)
+        self._returnit=None
+    def run(self):
+        if self._target is not None:
+            self._returnit=self._target(*self._args,**self._kwargs)
+    def join(self, timeout = None):
+        Thread.join(self)
+        return self._returnit
+
 class Logic:
   
     def link_generation(self):##python automatically gives a positional arguement when we call it,so we must write "self"
@@ -31,7 +42,7 @@ class Logic:
         finder=driver.find_elements(By.CLASS_NAME,"hfpxzc") #to find all the links once end reached
         link_list=[]
         for i in finder:
-            if i not in link_list:
+            if i.get_attribute("href") not in link_list:
                 link_list.append(i.get_attribute("href"))
         driver.quit()
         print(f"{len(link_list)} companies found.")
@@ -40,11 +51,13 @@ class Logic:
         return link_list,your_query,loop_number
        
     def InstanceProvider(self):
-       driven=Driver(uc=True, headless=True)
-       return driven
-    
+       GBPdriver=Driver(uc=True, headless=True)
+       emaildriver=Driver(uc=True,headless=True)
+       return GBPdriver,emaildriver
+    def link_getter(self,i,driver):
+        driver.uc_open_with_reconnect(i, reconnect_time=0.1)
+        return
     def company(self,i,driven):
-           driven.uc_open_with_reconnect(i, reconnect_time=0.1)
            time.sleep(0.3)
            try: 
             CFinder=driven.find_element(By.CSS_SELECTOR, ".m6QErb.Pf6ghf.XiKgde.ecceSd.tLjsW")
@@ -55,29 +68,11 @@ class Logic:
              print("Trouble rendering company")
              Company="Not present on google business profiles"
            return Company
-   
-    def address_PhoneNumber_website(self,driven):
-           try:   
-             AFinder=driven.find_element(By.CLASS_NAME,"CsEnBe")
-             time.sleep(0.1)
-             NeedToClean=AFinder.get_attribute("aria-label")
-             Address=NeedToClean.replace("Address: ","")
-           except:
-              print("Trouble rendering address")
-              Address="Not present on google business profiles"
-            
-           PFinders=driven.find_elements(By.CSS_SELECTOR,".Io6YTe.fontBodyMedium.kR99db.fdkmkc")
-           for f in PFinders:
-             try: 
-                 b=int(f.text.replace(" ",""))+1 
-                 PhoneNumber=f.text.replace(" ","")
-                 break#will have to change.Numbers cant have spaces.Hence number strings with spaces cant be converted to int 
-             except:
-               PhoneNumber="Not present on google business profiles"
+    def website(self,driver):
+           ProbableWebSites=[]
+           WebSite=None                  #new concept here
            try:
-              WebFinder=driven.find_elements(By.CSS_SELECTOR,".lcr4fd.S9kvJb")
-              ProbableWebSites=[]
-              WebSite=None                     #new concept here
+              WebFinder=driver.find_elements(By.CSS_SELECTOR,".lcr4fd.S9kvJb")
               for g in WebFinder:
                  ProbableWebSites.append(g.get_attribute("href"))
               for h in ProbableWebSites:
@@ -88,13 +83,35 @@ class Logic:
                   WebSite="Not present on google business profiles"   
            except:
               WebSite="Not present on google business profiles"
-           return Address,PhoneNumber,WebSite
+           return WebSite
+
+    def address_PhoneNumber(self,driven):#Gotta fix the address logic by a bit
+           try:   
+             AFinder=driven.find_element(By.CLASS_NAME,"CsEnBe")
+             time.sleep(0.1)
+             NeedToClean=AFinder.get_attribute("aria-label")
+             Address=NeedToClean.replace("Address: ","")
+           except:
+              print("Trouble rendering address")
+              Address="Not present on google business profiles"
+            
+           PFinders=driven.find_elements(By.CSS_SELECTOR,".Io6YTe.fontBodyMedium.kR99db.fdkmkc")
+           PhoneNumber="Not present on google business profiles"
+           for f in PFinders:
+             try: 
+                 b=int(f.text.replace(" ",""))+1 
+                 PhoneNumber=f.text.replace(" ","")
+                 break#will have to change.Numbers cant have spaces.Hence number strings with spaces cant be converted to int 
+             except:
+               PhoneNumber="Not present on google business profiles"
+           return Address,PhoneNumber
     
     def email(self,Company,Website,driven):
         initial_query="https://www.google.com/search?q="
-        if Website.startswith("https") & Website.endswith("/"):
-               web=Website[:len(Website)-1]
-               final_query=initial_query+web+"+email+address"
+        if Website and Website.startswith("https") and Website.endswith("/"):
+               iweb=Website[:len(Website)-1]
+               fweb=iweb.replace("https://","")
+               final_query=initial_query+fweb+"+email+address"
 
         else:       
               OnlyCompany=Company.split('|')
@@ -111,7 +128,8 @@ class Logic:
         try:
               emailwebelements = driven.find_elements(By.XPATH, "//em[contains(text(),'@')]") 
               for b in emailwebelements:
-                  emaillist.append(b.text)
+                  if b.text not in emaillist:
+                    emaillist.append(b.text)
         except:
                emailwebelements="Not found"
         return emaillist
@@ -126,22 +144,37 @@ class Logic:
 
 def main():
    logic=Logic()
-   link_list,your_query,loop_number=logic.link_generation()
-   driven=logic.InstanceProvider()
-   driven.implicitly_wait(5)
+   link_list,your_query,loop_number=logic.link_generation()    ##gotta access a class's methods like this,how else
+   GBPdriver,emaildriver=logic.InstanceProvider()
+   GBPdriver.implicitly_wait(5)
+   emaildriver.implicitly_wait(5)
    start=time.time()
    loop_count=0
    element_list=[]
+
    for i in link_list:
       if loop_count<int(loop_number):
-         Company=logic.company(i,driven)
-         Address,PhoneNumber,Website=logic.address_PhoneNumber_website(driven)
-         map_link=i
-         emaillist=logic.email(Company,Website,driven)
-         element_list.append([Company,Address,PhoneNumber,map_link,Website,emaillist])
+         LT=returningThread(target=logic.link_getter,args=(i,GBPdriver))
+         LT.start()
+         LT.join()
+         CT=returningThread(target=logic.company,args=(i,GBPdriver))
+         WT=returningThread(target=logic.website,args=(GBPdriver,))
+         CT.start()
+         WT.start()
+         Company=CT.join()
+         Website=WT.join()
+         APT=returningThread(target=logic.address_PhoneNumber,args=(GBPdriver,))   ##arguement must be a tuple,hence the comma
+         ET=returningThread(target=logic.email,args=(Company,Website,emaildriver))
+         APT.start()
+         ET.start()
+         Address,PhoneNumber=APT.join()
+         emaillist=ET.join()
+
+         element_list.append([Company,Address,PhoneNumber,i,Website,emaillist])
          loop_count=loop_count+1
       else:
-        driven.quit()
+        GBPdriver.quit()
+        emaildriver.quit()
         break
 
    print(element_list)
