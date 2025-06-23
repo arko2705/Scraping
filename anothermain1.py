@@ -32,9 +32,10 @@ class Logic:
         link_list=[]
         for i in finder:
             link_list.append(i.get_attribute("href"))
+        driver.quit()
+        print(f"{len(link_list)} companies found.")
         print("Enter the number of companies you would like to get the information for: ")
         loop_number=input()
-        driver.quit()
         return link_list,your_query,loop_number
        
     def InstanceProvider(self):
@@ -75,37 +76,45 @@ class Logic:
            try:
               WebFinder=driven.find_elements(By.CSS_SELECTOR,".lcr4fd.S9kvJb")
               ProbableWebSites=[]
+              WebSite=None                     #new concept here
               for g in WebFinder:
                  ProbableWebSites.append(g.get_attribute("href"))
               for h in ProbableWebSites:
                  if h.startswith("http") and not h[-1].isdigit() and not h.startswith("https://api.whatsapp"):
                      WebSite=h
                      break
+              if WebSite is None:
+                  WebSite="Not present on google business profiles"   
            except:
               WebSite="Not present on google business profiles"
            return Address,PhoneNumber,WebSite
     
-    def email(self,Company,driven):
-           try:
+    def email(self,Company,Website,driven):
+        initial_query="https://www.google.com/search?q="
+        if Website.startswith("https"):
+               web=Website[:len(Website)-1]
+               final_query=initial_query+web+"+email+address"
+
+        else:       
               OnlyCompany=Company.split('|')
               Company_array=OnlyCompany[0].split(' ')
-              initial_query="https://www.google.com/search?q="
               for f in Company_array:
                  initial_query=initial_query+"+"+f
               final_query=initial_query+"+email+address"
-              driven.uc_open_with_reconnect(final_query, reconnect_time=0.1)
-              driven.find_element(By.XPATH,"//div[@class='sjVJQd pt054b']").click()  ##That give your location prompt that comes up in incognito so that they can give more accurate results
-           except:
-               pass
-           try:
+        try:
+            driven.uc_open_with_reconnect(final_query, reconnect_time=0.1)
+            driven.find_element(By.XPATH,"//div[@class='sjVJQd pt054b']").click()  ##That give your location prompt that comes up in incognito so that they can give more accurate results
+        except:
+            pass
+        emaillist=[]
+        try:
               emailwebelements = driven.find_elements(By.XPATH, "//em[contains(text(),'@')]") 
-              emaillist=[]
               for b in emailwebelements:
                   emaillist.append(b.text)
-           except:
+        except:
                driven.save_screenshot("debug.png")
                emailwebelements="Not found"
-           return emaillist
+        return emaillist
     
     def csv_store(self,element_list,your_query):
         with open(f'iBusiness Profile-{your_query}.csv','w',newline='',encoding='UTF-8') as file: 
@@ -124,15 +133,15 @@ def main():
    loop_count=0
    element_list=[]
    for i in link_list:
-      if loop_count<int(loop_number):
+      while loop_count<int(loop_number):
          Company=logic.company(i,driven)
          Address,PhoneNumber,Website=logic.address_PhoneNumber_website(driven)
          map_link=i
-         emaillist=logic.email(Company,driven)
-         element_list.append(Company,Address,PhoneNumber,map_link,Website)
-      else:
-         driven.quit()
-         break
+         emaillist=logic.email(Company,Website,driven)
+         element_list.append([Company,Address,PhoneNumber,map_link,Website,emaillist])
+         loop_count=loop_count+1
+      driven.quit()
+
    print(element_list)
    end=time.time()
    print(f"{end-start} seconds taken")
