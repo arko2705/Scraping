@@ -1,4 +1,5 @@
 from threading import Thread
+from selenium.webdriver.chrome.service import Service
 from selenium import webdriver # type: ignore
 from selenium.webdriver.common.by import By # type: ignore
 import pyautogui # type: ignore
@@ -16,7 +17,7 @@ class returningThread(Thread):
         Thread.__init__(self,group,target,name,args,kwargs)
         self._returnit=None
     def run(self):
-        if self._target is not None:  ##
+        if self._target is not None:  
             self._returnit=self._target(*self._args,**self._kwargs)
     def join(self, timeout = None):
         Thread.join(self)
@@ -26,7 +27,7 @@ class Logic:
   
     def link_generation(self):##python automatically gives a positional arguement when we call it,so we must write "self"
         googling_it,your_query=s.search()
-        driver=udc.Chrome(use_subprocess=False,)
+        driver=udc.Chrome(version_main=137,use_subprocess=False)
         driver.get(googling_it)
         cond=True
         while cond:
@@ -49,9 +50,9 @@ class Logic:
         return link_list,your_query,loop_number
        
     def InstanceProvider(self):
-       GBPdriver=Driver(uc=True, headless=True)
-       emaildriver=Driver(uc=True,headless=True)
-       linkedindriver=Driver(uc=True,headless=True)
+       GBPdriver=Driver(uc=True, headless=True,block_images=True)
+       emaildriver=Driver(uc=True,headless=True,block_images=True)
+       linkedindriver=Driver(uc=True,headless=True,block_images=True)
        return GBPdriver,emaildriver,linkedindriver
     def link_getter(self,i,driver):
         driver.uc_open_with_reconnect(i, reconnect_time=0.1)
@@ -184,24 +185,25 @@ def main():
 
    for i in link_list:
       if loop_count<int(loop_number):
-         LT=returningThread(target=logic.link_getter,args=(i,GBPdriver))
-         LT.start()
-         LT.join()
+         #LT=returningThread(target=logic.link_getter,args=(i,GBPdriver))
+         #LT.start()
+         #LT.join()
+         logic.link_getter(i,GBPdriver)
          CT=returningThread(target=logic.company,args=(i,GBPdriver))
          WT=returningThread(target=logic.website,args=(GBPdriver,))
+         APT=returningThread(target=logic.address_PhoneNumber,args=(GBPdriver,))##arguement must be a tuple,hence the comma
+         APT.start()
          CT.start()
          WT.start()
          Company=CT.join()
          Website=WT.join()
-         APT=returningThread(target=logic.address_PhoneNumber,args=(GBPdriver,))   ##arguement must be a tuple,hence the comma
          ET=returningThread(target=logic.email,args=(Company,Website,emaildriver))
          LIT=returningThread(target=logic.linkedin,args=(Website,Company,ldriver))
-         APT.start()
          ET.start()
          LIT.start()
-         Address,PhoneNumber=APT.join()
          emaillist=ET.join()
          linkedin=LIT.join()
+         Address,PhoneNumber=APT.join()
 
          element_list.append([Company,Address,PhoneNumber,i,Website,emaillist,linkedin])
          loop_count=loop_count+1
