@@ -135,7 +135,7 @@ class Logic:
         return emaillist
     
     def csv_store(self,element_list,your_query):
-        with open(f'iBusiness Profile-{your_query}.csv','w',newline='',encoding='UTF-8') as file: 
+        with open(f'MBusiness Profile-{your_query}.csv','w',newline='',encoding='UTF-8') as file: 
             Columns=['Company Name','Address','Phone Number','Google business profile link','Website','E-Mail']
             write=csv.writer(file)
             write.writerow(Columns)
