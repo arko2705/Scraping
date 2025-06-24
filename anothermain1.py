@@ -5,8 +5,6 @@ import pyautogui # type: ignore
 import undetected_chromedriver as udc # type: ignore
 import time
 from seleniumbase import Driver
-from selenium.webdriver.support.ui import WebDriverWait # type: ignore
-from selenium.webdriver.support import expected_conditions as EC # type: ignore
 import os
 import csv
 import sys
@@ -18,7 +16,7 @@ class returningThread(Thread):
         Thread.__init__(self,group,target,name,args,kwargs)
         self._returnit=None
     def run(self):
-        if self._target is not None:
+        if self._target is not None:  ##
             self._returnit=self._target(*self._args,**self._kwargs)
     def join(self, timeout = None):
         Thread.join(self)
@@ -53,7 +51,8 @@ class Logic:
     def InstanceProvider(self):
        GBPdriver=Driver(uc=True, headless=True)
        emaildriver=Driver(uc=True,headless=True)
-       return GBPdriver,emaildriver
+       linkedindriver=Driver(uc=True,headless=True)
+       return GBPdriver,emaildriver,linkedindriver
     def link_getter(self,i,driver):
         driver.uc_open_with_reconnect(i, reconnect_time=0.1)
         return
@@ -90,7 +89,9 @@ class Logic:
              AFinder=driven.find_element(By.CLASS_NAME,"CsEnBe")
              time.sleep(0.1)
              NeedToClean=AFinder.get_attribute("aria-label")
-             Address=NeedToClean.replace("Address: ","")
+             Address="Not present on google business profiles"
+             if NeedToClean.startswith("Address: "):
+                Address=NeedToClean.replace("Address: ","")
            except:
               print("Trouble rendering address")
               Address="Not present on google business profiles"
@@ -101,7 +102,7 @@ class Logic:
              try: 
                  b=int(f.text.replace(" ",""))+1 
                  PhoneNumber=f.text.replace(" ","")
-                 break#will have to change.Numbers cant have spaces.Hence number strings with spaces cant be converted to int 
+                 break
              except:
                PhoneNumber="Not present on google business profiles"
            return Address,PhoneNumber
@@ -134,9 +135,37 @@ class Logic:
                emailwebelements="Not found"
         return emaillist
     
+    def linkedin(self,Website,Company,driven):
+        initial_query="https://www.google.com/search?q="
+        if Website and Website.startswith("https") and Website.endswith("/"):
+               iweb=Website[:len(Website)-1]
+               fweb=iweb.replace("https://","")
+               final_query=initial_query+fweb+"+linkedin"
+
+        else:       
+              OnlyCompany=Company.split('|')
+              Company_array=OnlyCompany[0].split(' ')
+              for f in Company_array:
+                 initial_query=initial_query+"+"+f
+              final_query=initial_query+"+linkedin"
+        try:
+            driven.uc_open_with_reconnect(final_query, reconnect_time=0.1)
+            driven.find_element(By.XPATH,"//div[@class='sjVJQd pt054b']").click()  ##That give your location prompt that comes up in incognito so that they can give more accurate results
+        except:
+            pass
+        linkedin="Could not render"
+        try:
+              webelement= driven.find_element(By.CLASS_NAME, "zReHs") 
+              linkedin=webelement.get_attribute("href")
+        except:
+               linkedin="Not found"
+        return linkedin
+
+
+    
     def csv_store(self,element_list,your_query):
-        with open(f'MBusiness Profile-{your_query}.csv','w',newline='',encoding='UTF-8') as file: 
-            Columns=['Company Name','Address','Phone Number','Google business profile link','Website','E-Mail']
+        with open(f'ABusiness Profile-{your_query}.csv','w',newline='',encoding='UTF-8') as file: 
+            Columns=['Company Name','Address','Phone Number','Google business profile link','Website','E-Mail','Linkedin-Link']
             write=csv.writer(file)
             write.writerow(Columns)
             write.writerows(element_list)
@@ -145,9 +174,10 @@ class Logic:
 def main():
    logic=Logic()  ##need to make an instance first
    link_list,your_query,loop_number=logic.link_generation()    ##gotta access a class's methods like this,how else
-   GBPdriver,emaildriver=logic.InstanceProvider()
+   GBPdriver,emaildriver,ldriver=logic.InstanceProvider()
    GBPdriver.implicitly_wait(5)
    emaildriver.implicitly_wait(5)
+   ldriver.implicitly_wait(5)
    start=time.time()
    loop_count=0
    element_list=[]
@@ -165,16 +195,20 @@ def main():
          Website=WT.join()
          APT=returningThread(target=logic.address_PhoneNumber,args=(GBPdriver,))   ##arguement must be a tuple,hence the comma
          ET=returningThread(target=logic.email,args=(Company,Website,emaildriver))
+         LIT=returningThread(target=logic.linkedin,args=(Website,Company,ldriver))
          APT.start()
          ET.start()
+         LIT.start()
          Address,PhoneNumber=APT.join()
          emaillist=ET.join()
+         linkedin=LIT.join()
 
-         element_list.append([Company,Address,PhoneNumber,i,Website,emaillist])
+         element_list.append([Company,Address,PhoneNumber,i,Website,emaillist,linkedin])
          loop_count=loop_count+1
       else:
         GBPdriver.quit()
         emaildriver.quit()
+        ldriver.quit()
         break
 
    print(element_list)
