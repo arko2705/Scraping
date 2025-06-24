@@ -27,8 +27,8 @@ class returningThread(Thread):
 class Logic:
   
     def link_generation(self):##python automatically gives a positional arguement when we call it,so we must write "self"
-        driver=udc.Chrome(use_subprocess=False,)
         googling_it,your_query=s.search()
+        driver=udc.Chrome(use_subprocess=False,)
         driver.get(googling_it)
         cond=True
         while cond:
@@ -143,7 +143,7 @@ class Logic:
             print("Remember to extend your row width in the csv files,for it to look prettier and better!")
 
 def main():
-   logic=Logic()
+   logic=Logic()  ##need to make an instance first
    link_list,your_query,loop_number=logic.link_generation()    ##gotta access a class's methods like this,how else
    GBPdriver,emaildriver=logic.InstanceProvider()
    GBPdriver.implicitly_wait(5)
