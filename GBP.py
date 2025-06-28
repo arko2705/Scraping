@@ -1,27 +1,10 @@
-from threading import Thread
-from selenium.webdriver.chrome.service import Service
-from selenium import webdriver # type: ignore
-from selenium.webdriver.common.by import By # type: ignore
-import pyautogui # type: ignore
-import undetected_chromedriver as udc # type: ignore
-import time
-from seleniumbase import Driver
-import os
-import csv
-import sys
+import undetected_chromedriver as udc
 import search as s
-import sys
-#didnt use beautiful soup,i used selenium cuz google maps is javascript rendered,beautiful soup and requests would haave given back a bs page
-class returningThread(Thread):
-    def __init__(self,group=None,target=None,name=None,args=(),kwargs={}):
-        Thread.__init__(self,group,target,name,args,kwargs)
-        self._returnit=None
-    def run(self):
-        if self._target is not None:  
-            self._returnit=self._target(*self._args,**self._kwargs)
-    def join(self, timeout = None):
-        Thread.join(self)
-        return self._returnit
+from selenium.webdriver.common.by import By
+import time
+import pyautogui
+from seleniumbase import Driver
+import csv
 
 class Logic:
   
@@ -40,17 +23,14 @@ class Logic:
             pyautogui.scroll(-400)
         finder=driver.find_elements(By.CLASS_NAME,"hfpxzc") #to find all the links once end reached
         link_list=[]
-        company_list=[]
-        phone_list=[]
         for i in finder:
             if i.get_attribute("href") not in link_list:
-                company_list.append(i.get_attribute("aria-label"))
                 link_list.append(i.get_attribute("href"))
         driver.quit()
         print(f"{len(link_list)} companies found.")
         print("Enter the number of companies you would like to get the information for: ")
         loop_number=input()
-        return link_list,your_query,loop_number,company_list
+        return link_list,your_query,loop_number
        
     def InstanceProvider(self):
        GBPdriver=Driver(uc=True, headless=True,block_images=True)
@@ -136,6 +116,7 @@ class Logic:
                   if b.text not in emaillist:
                     emaillist.append(b.text)
         except:
+               driven.save_screenshot("email.png")
                emailwebelements="Not found"
         return emaillist
     
@@ -162,6 +143,7 @@ class Logic:
               webelement= driven.find_element(By.CLASS_NAME, "zReHs") 
               linkedin=webelement.get_attribute("href")
         except:
+               driven.save_element("linkedin.png")
                linkedin="Not found"
         return linkedin
 
@@ -174,52 +156,3 @@ class Logic:
             write.writerow(Columns)
             write.writerows(element_list)
             print("Remember to extend your row width in the csv files,for it to look prettier and better!")
-
-def main():
-   logic=Logic()  ##need to make an instance first
-   link_list,your_query,loop_number,company_list=logic.link_generation()    ##gotta access a class's methods like this,how else
-   GBPdriver,emaildriver,ldriver=logic.InstanceProvider()
-   GBPdriver.implicitly_wait(5)
-   emaildriver.implicitly_wait(5)
-   ldriver.implicitly_wait(5)
-   start=time.time()
-   loop_count=0
-   element_list=[]
-
-   for i in link_list:
-      if loop_count<int(loop_number):
-         #LT=returningThread(target=logic.link_getter,args=(i,GBPdriver))
-         #LT.start()
-         #LT.join()
-         Company=company_list[loop_count]
-         logic.link_getter(i,GBPdriver)
-         WT=returningThread(target=logic.website,args=(GBPdriver,))
-         APT=returningThread(target=logic.address_PhoneNumber,args=(GBPdriver,))##arguement must be a tuple,hence the comma
-         WT.start()
-         APT.start()
-         website=WT.join()
-         ET=returningThread(target=logic.email,args=(Company,website,emaildriver))
-         LIT=returningThread(target=logic.linkedin,args=(website,Company,ldriver))
-         ET.start()
-         LIT.start()
-         emaillist=ET.join()
-         linkedin=LIT.join()
-         Address,PhoneNumber=APT.join()
-
-         element_list.append([Company,Address,PhoneNumber,i,website,emaillist,linkedin])
-         loop_count=loop_count+1
-      else:
-        GBPdriver.quit()
-        emaildriver.quit()
-        ldriver.quit()
-        break
-
-   print(element_list)
-   end=time.time()
-   print(f"{end-start} seconds taken")
-   store_in_csv=input("Store in csv:Yes or no:\n")
-   if store_in_csv.lower()=="yes":
-       logic.csv_store(element_list,your_query)
-  
-if __name__=='__main__':
-    main()  

@@ -1,41 +1,42 @@
-from threading import Thread
-from selenium.webdriver.chrome.service import Service
-from selenium import webdriver # type: ignore
-from selenium.webdriver.common.by import By # type: ignore
-import pyautogui # type: ignore
-import undetected_chromedriver as udc # type: ignore
-import time
-from seleniumbase import Driver
-import os
-import csv
-import sys
+import undetected_chromedriver as udc
 import search as s
-import sys
-#didnt use beautiful soup,i used selenium cuz google maps is javascript rendered,beautiful soup and requests would haave given back a bs page
-class returningThread(Thread):
-    def __init__(self,group=None,target=None,name=None,args=(),kwargs={}):
-        Thread.__init__(self,group,target,name,args,kwargs)
-        self._returnit=None
-    def run(self):
-        if self._target is not None:  
-            self._returnit=self._target(*self._args,**self._kwargs)
-    def join(self, timeout = None):
-        Thread.join(self)
-        return self._returnit
+from selenium.webdriver.common.by import By
+import time
+import pyautogui
+from seleniumbase import Driver
+import random
+import csv
 
 class Logic:
-  
+    def user_agents(self):
+        user_agents = [
+
+    # Firefox (Windows)
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0",
+
+
+    # Edge (Windows)
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
+]
+        ua=random.choice(user_agents)
+        return ua
+
     def link_generation(self):##python automatically gives a positional arguement when we call it,so we must write "self"
         googling_it,your_query=s.search()
         driver=udc.Chrome(version_main=137,use_subprocess=False)
         driver.get(googling_it)
         cond=True
+        try:
+         driver.find_element(By.CSS_SELECTOR,"button.D6NGZc")
+        except:
+            pass
         while cond:
             try:
                 driver.find_element(By.CLASS_NAME,"HlvSq")#to indicate end to it all
                 cond=False
             except:
                 pass
+            
             time.sleep(0.05)
             pyautogui.scroll(-400)
         finder=driver.find_elements(By.CLASS_NAME,"hfpxzc") #to find all the links once end reached
@@ -51,12 +52,17 @@ class Logic:
         print("Enter the number of companies you would like to get the information for: ")
         loop_number=input()
         return link_list,your_query,loop_number,company_list
-       
-    def InstanceProvider(self):
+    
+    def G_InstanceProvider(self):
        GBPdriver=Driver(uc=True, headless=True,block_images=True)
+       return GBPdriver
+    def E_InstanceProvider(self):
        emaildriver=Driver(uc=True,headless=True,block_images=True)
+       return emaildriver
+    def L_InstanceProvider(self):
        linkedindriver=Driver(uc=True,headless=True,block_images=True)
-       return GBPdriver,emaildriver,linkedindriver
+       return linkedindriver
+    
     def link_getter(self,i,driver):
         driver.uc_open_with_reconnect(i, reconnect_time=0.1)
         return
@@ -88,7 +94,7 @@ class Logic:
               WebSite="Not present on google business profiles"
            return WebSite
 
-    def address_PhoneNumber(self,driven):#Gotta fix the address logic by a bit
+    def address(self,driven):#Gotta fix the address logic by a bit
            try:   
              AFinder=driven.find_element(By.CLASS_NAME,"CsEnBe")
              time.sleep(0.1)
@@ -99,7 +105,9 @@ class Logic:
            except:
               print("Trouble rendering address")
               Address="Not present on google business profiles"
-            
+           return Address
+    
+    def PhoneNumber (self,driven):
            PFinders=driven.find_elements(By.CSS_SELECTOR,".Io6YTe.fontBodyMedium.kR99db.fdkmkc")
            PhoneNumber="Not present on google business profiles"
            for f in PFinders:
@@ -109,7 +117,7 @@ class Logic:
                  break
              except:
                PhoneNumber="Not present on google business profiles"
-           return Address,PhoneNumber
+           return PhoneNumber
     
     def email(self,Company,Website,driven):
         initial_query="https://www.google.com/search?q="
@@ -162,64 +170,62 @@ class Logic:
               webelement= driven.find_element(By.CLASS_NAME, "zReHs") 
               linkedin=webelement.get_attribute("href")
         except:
+               driven.save_screenshot('Ldebug.png')
                linkedin="Not found"
         return linkedin
+    def UserChoices(self):
+     user_choices=[]
+     while True:
+         b=input()
+         if b=='7':
+             break
+         user_choices.append(int(b))
+     return user_choices
+    
+    def headers(self,user_choices):
+           user_choices.sort()
+           if 1 in user_choices and 2 in user_choices:
+            for i in range(len(user_choices)):
+               if user_choices[i]>2:
+                   temp=user_choices[i-2]
+                   user_choices[i-2]=user_choices[i]
+                   user_choices[i]=temp
+           elif 1 in user_choices or 2 in user_choices:
+            for i in range(len(user_choices)):
+               if user_choices[i]>2:
+                   temp=user_choices[i-1]
+                   user_choices[i-1]=user_choices[i]
+                   user_choices[i]=temp
+           else:
+               pass
+               
+
+           heading_list=[]
+           heading_list.append("Company")
+           for x in user_choices:
+            match x:
+              case 1:
+                 heading_list.append("E Mail")
+              case 2:
+                  heading_list.append("Linkedin")
+              case 3:
+                 heading_list.append("Address")
+              case 4:
+                 heading_list.append("Phone Number")
+                  
+              case 5:
+                  heading_list.append("Map Link")
+
+              case 6:
+                  heading_list.append("Website")
+
+           return heading_list
 
 
     
-    def csv_store(self,element_list,your_query):
+    def csv_store(self,element_list,your_query,headers):
         with open(f'ABusiness Profile-{your_query}.csv','w',newline='',encoding='UTF-8') as file: 
-            Columns=['Company Name','Address','Phone Number','Google business profile link','Website','E-Mail','Linkedin-Link']
             write=csv.writer(file)
-            write.writerow(Columns)
+            write.writerow(headers)
             write.writerows(element_list)
             print("Remember to extend your row width in the csv files,for it to look prettier and better!")
-
-def main():
-   logic=Logic()  ##need to make an instance first
-   link_list,your_query,loop_number,company_list=logic.link_generation()    ##gotta access a class's methods like this,how else
-   GBPdriver,emaildriver,ldriver=logic.InstanceProvider()
-   GBPdriver.implicitly_wait(5)
-   emaildriver.implicitly_wait(5)
-   ldriver.implicitly_wait(5)
-   start=time.time()
-   loop_count=0
-   element_list=[]
-
-   for i in link_list:
-      if loop_count<int(loop_number):
-         #LT=returningThread(target=logic.link_getter,args=(i,GBPdriver))
-         #LT.start()
-         #LT.join()
-         Company=company_list[loop_count]
-         logic.link_getter(i,GBPdriver)
-         WT=returningThread(target=logic.website,args=(GBPdriver,))
-         APT=returningThread(target=logic.address_PhoneNumber,args=(GBPdriver,))##arguement must be a tuple,hence the comma
-         WT.start()
-         APT.start()
-         website=WT.join()
-         ET=returningThread(target=logic.email,args=(Company,website,emaildriver))
-         LIT=returningThread(target=logic.linkedin,args=(website,Company,ldriver))
-         ET.start()
-         LIT.start()
-         emaillist=ET.join()
-         linkedin=LIT.join()
-         Address,PhoneNumber=APT.join()
-
-         element_list.append([Company,Address,PhoneNumber,i,website,emaillist,linkedin])
-         loop_count=loop_count+1
-      else:
-        GBPdriver.quit()
-        emaildriver.quit()
-        ldriver.quit()
-        break
-
-   print(element_list)
-   end=time.time()
-   print(f"{end-start} seconds taken")
-   store_in_csv=input("Store in csv:Yes or no:\n")
-   if store_in_csv.lower()=="yes":
-       logic.csv_store(element_list,your_query)
-  
-if __name__=='__main__':
-    main()  
